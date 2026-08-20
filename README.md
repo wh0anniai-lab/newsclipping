@@ -90,3 +90,29 @@ src/
 > 서버리스(Vercel 등)로 배포하면 인스턴스마다 파일이 따로 생겨 카운터가 정확하지 않습니다. 그때는 Redis 같은 공유 저장소로 바꿔야 합니다.
 - 동일 기사가 두 채널에 모두 있으면 본문 요약이 있는 네이버 쪽을 남깁니다.
 - 기사 저작권은 각 언론사에 있습니다. 사내 모니터링 용도로만 사용하세요.
+
+## Vercel 배포
+
+1. [vercel.com/new](https://vercel.com/new) 에서 `wh0anniai-lab/newsclipping` 를 Import 합니다.
+   Framework는 Next.js로 자동 인식되며, 빌드 설정은 건드릴 필요가 없습니다.
+2. **Environment Variables** 에 아래 값을 넣습니다. (Production / Preview 모두 체크)
+
+   | Key | 필수 | 값 |
+   |---|---|---|
+   | `NAVER_CLIENT_ID` | 네이버 수집에 필요 | API Hub에서 발급한 Client ID |
+   | `NAVER_CLIENT_SECRET` | 네이버 수집에 필요 | API Hub에서 발급한 Client Secret |
+   | `NAVER_DAILY_LIMIT` | 선택 | 기본 25000 |
+   | `ANTHROPIC_API_KEY` | 선택 | 없으면 규칙 기반 요약으로 동작 |
+   | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `MAIL_FROM` | 메일 발송에 필요 | 없으면 메일 버튼이 안내 메시지를 반환 |
+
+3. Deploy를 누르면 끝입니다. 이후 `main`에 push할 때마다 자동 배포됩니다.
+
+환경변수를 나중에 바꾸면 **재배포해야 반영됩니다** (Deployments → 최신 항목 → Redeploy).
+
+### 배포 환경에서 달라지는 점
+
+- **호출량 카운터는 인스턴스 단위로만 정확합니다.** 서버리스는 파일시스템이 인스턴스마다
+  분리되므로, 여러 인스턴스가 뜨면 합산 사용량이 한도보다 커질 수 있습니다.
+  네이버가 `429`를 주면 즉시 차단되므로 크게 넘지는 않지만, 정확한 집계가 필요하면
+  Upstash Redis 같은 공유 저장소로 `src/lib/quota.ts` 를 바꿔야 합니다.
+- 파일 쓰기가 실패해도 예외를 던지지 않고 메모리 카운터로 계속 동작합니다.
