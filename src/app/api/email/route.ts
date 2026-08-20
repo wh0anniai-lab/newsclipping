@@ -48,7 +48,10 @@ export async function POST(request: Request) {
     return Response.json(
       {
         error:
-          "메일 발송 설정이 없습니다. .env.local에 SMTP_HOST, SMTP_USER, SMTP_PASS를 설정한 뒤 다시 시도해 주세요.",
+          "메일 발송 설정이 없습니다. SMTP_HOST, SMTP_USER, SMTP_PASS를 " +
+          (process.env.VERCEL
+            ? "Vercel 프로젝트의 Environment Variables에 등록하고 재배포해 주세요."
+            : ".env.local에 설정한 뒤 서버를 다시 시작해 주세요."),
       },
       { status: 501 },
     );
