@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { positiveNumberEnv } from "@/lib/env";
 import { buildEmailHtml, buildEmailText, isValidEmail, parseRecipients } from "@/lib/mail";
 import { buildFileName, buildWorkbook } from "@/lib/excel";
 import type { ClippingResult } from "@/lib/types";
@@ -7,11 +8,11 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 function smtpConfig() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
+  const host = process.env.SMTP_HOST?.trim();
+  const user = process.env.SMTP_USER?.trim();
   const pass = process.env.SMTP_PASS;
   if (!host || !user || !pass) return null;
-  const port = Number(process.env.SMTP_PORT ?? 587);
+  const port = positiveNumberEnv(process.env.SMTP_PORT, 587);
   return {
     host,
     port,

@@ -2,6 +2,7 @@ import type { Article } from "@/lib/types";
 import { pressFromHost } from "@/lib/press";
 import { cleanTitle, stripHtml } from "@/lib/text";
 import { markProviderExhausted, reserveNaverCall } from "@/lib/quota";
+import { hasEnv } from "@/lib/env";
 
 interface NaverItem {
   title: string;
@@ -46,7 +47,7 @@ export class NaverQuotaExceededError extends Error {
 }
 
 export function hasNaverCredentials(): boolean {
-  return Boolean(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET);
+  return hasEnv("NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET");
 }
 
 async function errorMessage(res: Response): Promise<string> {
@@ -120,8 +121,8 @@ export interface NaverResult {
 }
 
 export async function fetchNaverNews(keyword: string, cutoff: number): Promise<NaverResult> {
-  const clientId = process.env.NAVER_CLIENT_ID;
-  const clientSecret = process.env.NAVER_CLIENT_SECRET;
+  const clientId = process.env.NAVER_CLIENT_ID?.trim();
+  const clientSecret = process.env.NAVER_CLIENT_SECRET?.trim();
   if (!clientId || !clientSecret) return { articles: [], truncated: false, quotaExceeded: false };
 
   const collected: Article[] = [];

@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { positiveNumberEnv } from "@/lib/env";
 
 /**
  * 네이버 검색 API 일일 호출량 가드.
@@ -17,7 +18,12 @@ import path from "node:path";
  *    (그 경우에도 네이버가 429를 주면 즉시 차단되므로 한도를 크게 넘지는 않는다.)
  */
 
-export const NAVER_DAILY_LIMIT = Number(process.env.NAVER_DAILY_LIMIT ?? 25_000);
+export const NAVER_DAILY_DEFAULT = 25_000;
+
+/** 매번 읽는다 — 값이 비어 있거나 숫자가 아니면 기본값으로 되돌린다. */
+export function naverDailyLimit(): number {
+  return positiveNumberEnv(process.env.NAVER_DAILY_LIMIT, NAVER_DAILY_DEFAULT);
+}
 
 /** 서버리스에서는 쓰기 가능한 유일한 경로가 /tmp 다. */
 const STORE_PATH = process.env.VERCEL
@@ -93,11 +99,12 @@ function serialize<T>(task: () => Promise<T>): Promise<T> {
 function toStatus(file: QuotaFile): QuotaStatus {
   const used = file.count;
   const blockedByProvider = Boolean(file.blockedAt);
-  const remaining = Math.max(0, NAVER_DAILY_LIMIT - used);
+  const limit = naverDailyLimit();
+  const remaining = Math.max(0, limit - used);
   return {
     date: file.date,
     used,
-    limit: NAVER_DAILY_LIMIT,
+    limit,
     remaining,
     exhausted: blockedByProvider || remaining <= 0,
     blockedByProvider,
@@ -115,7 +122,7 @@ export async function getQuotaStatus(): Promise<QuotaStatus> {
 export async function reserveNaverCall(): Promise<boolean> {
   return serialize(async () => {
     const file = await read();
-    if (file.blockedAt || file.count >= NAVER_DAILY_LIMIT) {
+    if (file.blockedAt || file.count >= naverDailyLimit()) {
       await write(file);
       return false;
     }
@@ -130,7 +137,7 @@ export async function markProviderExhausted(): Promise<void> {
     const file = await read();
     await write({
       ...file,
-      count: Math.max(file.count, NAVER_DAILY_LIMIT),
+      count: Math.max(file.count, naverDailyLimit()),
       blockedAt: file.blockedAt ?? new Date().toISOString(),
     });
   });
