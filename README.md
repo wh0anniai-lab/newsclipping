@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 뉴스 클리핑 & 이슈 분석
 
-## Getting Started
+키워드로 **네이버 뉴스 · 구글 뉴스**를 수집해 요약·시각화하고, 결과를 **엑셀 다운로드**하거나 **메일 발송**하는 뉴스 클리핑 웹앱입니다.
 
-First, run the development server:
+## 기능
+
+| # | 기능 | 설명 |
+|---|------|------|
+| 1 | 키워드 검색 | 네이버 뉴스 API + 구글 뉴스 RSS 동시 수집, 최대 5개 키워드 |
+| 2 | 기간 설정 | 1주일 / 2주일 / 1개월 (KST 기준) |
+| 3 | 엑셀 다운로드 | `요약 리포트` · `뉴스 목록` · `통계` 3개 시트 |
+| 4 | 제목 하이퍼링크 | 엑셀 제목 셀을 클릭하면 원본 기사로 이동 |
+| 5 | 메일 발송 | 입력한 주소로 HTML 리포트 + 엑셀 첨부 발송 |
+| 6 | 전체 요약 | 5문장 이내 요약을 페이지 최상단에 표시 |
+
+### 추가한 시각화
+
+- **KPI 타일** — 수집 기사 / 보도 언론사 / 일평균 보도량 / 최다 보도일
+- **일자별 보도량 추이** — 키워드별 누적 막대, 피크 직접 라벨, 호버 상세
+- **채널 구성** — 네이버 · 구글 수집 비중
+- **언론사별 보도량 TOP 10** — 어느 매체가 이슈를 주도했는지
+- **연관 키워드 클라우드** — 클릭하면 아래 기사 목록이 필터링
+- **이슈 흐름 히트맵** — 상위 연관 키워드 × 날짜, 이슈가 언제 터졌는지
+- **키워드별 총 보도량** — 키워드를 2개 이상 넣었을 때 노출량 비교
+
+모든 차트는 라이트/다크 모드에 대응하며, 색은 색각 이상(CVD) 검증을 통과한 팔레트를 사용합니다.
+
+## 시작하기
 
 ```bash
+npm install
+cp .env.example .env.local   # 필요한 키만 채우면 됩니다
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 에서 확인합니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 환경 변수
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+전부 **선택 사항**이며, 없으면 해당 기능만 자동으로 대체 동작합니다.
 
-## Learn More
+| 변수 | 없을 때 동작 |
+|------|--------------|
+| `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` | 구글 뉴스만 수집하고 화면에 안내 문구 표시 |
+| `ANTHROPIC_API_KEY` | Claude AI 요약 대신 규칙 기반(클러스터링) 요약 사용 |
+| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` | "메일 보내기" 시 설정 안내 메시지 반환 |
 
-To learn more about Next.js, take a look at the following resources:
+- **네이버 키 발급**: https://console.ncloud.com/naver-api-hub/application → 애플리케이션 등록 → "검색" API 추가
+  - 검색 API는 developers.naver.com에서 **NAVER API HUB(ncloud)** 로 이관됐습니다. 엔드포인트는 `naverapihub.apigw.ntruss.com`, 헤더는 `X-NCP-APIGW-API-KEY-ID` / `X-NCP-APIGW-API-KEY` 입니다.
+  - 구 developers.naver.com 키를 쓰고 있다면 그대로 두셔도 됩니다. 앱이 두 방식을 모두 시도합니다.
+- **SMTP**: Gmail을 쓴다면 `smtp.gmail.com` / `587` / 계정 비밀번호가 아닌 **앱 비밀번호**를 사용하세요.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 구조
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+  app/
+    page.tsx              화면 전체 (검색 → 요약 → 시각화 → 목록 → 내보내기)
+    api/search/route.ts   수집 + 집계 + 요약
+    api/export/route.ts   엑셀 생성
+    api/email/route.ts    메일 발송 (엑셀 첨부)
+  lib/
+    sources/google.ts     구글 뉴스 RSS
+    sources/naver.ts      네이버 검색 API
+    collect.ts            수집·중복 제거
+    analytics.ts          차트용 집계
+    summarize.ts          Claude 요약 + 규칙 기반 폴백
+    excel.ts / mail.ts    엑셀·메일 문서 생성
+  components/             UI 및 차트 (의존성 없는 순수 SVG/CSS)
+```
 
-## Deploy on Vercel
+## 참고
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- 구글 뉴스 RSS는 키워드당 최대 100건, 네이버 검색 API는 최신순 최대 300건을 반환합니다.
+- 보도량이 많은 키워드는 네이버 300건이 최근 며칠에 몰려, 기간 앞부분이 과소 집계될 수 있습니다. 이 경우 화면에 안내가 표시됩니다.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 네이버 일일 호출 한도 가드
+
+네이버 무료 한도(기본 25,000회/일)를 넘지 않도록 앱이 직접 호출량을 셉니다.
+
+- 매 호출 **직전에 예약**하고, 한도를 넘으면 **네트워크 요청 자체를 하지 않습니다.**
+- 한도 소진 시 화면 상단에 **"오늘 네이버 무료 호출을 다 썼습니다"** 경고가 뜨고, 그날은 구글 뉴스만 수집합니다.
+- 네이버가 `429`를 돌려주면 우리 카운터보다 그쪽을 우선해 즉시 차단합니다.
+- 평상시에는 `사용량 28 / 25,000회 · 남은 24,972회` 형태로 조용히 표시되고, 80%를 넘으면 "한도 임박"으로 바뀝니다.
+- 카운터는 `.data/naver-quota.json`에 저장되어 서버를 재시작해도 유지되며, **한국 시간 자정**에 자동 초기화됩니다.
+- 한도는 `NAVER_DAILY_LIMIT` 로 조절합니다.
+
+네이버 콘솔의 실제 사용량과 맞추려면 `.data/naver-quota.json`의 `count` 값을 직접 고치면 됩니다. 이 카운터는 **이 앱이 보낸 호출만** 세므로, 다른 도구로도 같은 키를 쓴다면 수치가 달라질 수 있습니다.
+
+> 서버리스(Vercel 등)로 배포하면 인스턴스마다 파일이 따로 생겨 카운터가 정확하지 않습니다. 그때는 Redis 같은 공유 저장소로 바꿔야 합니다.
+- 동일 기사가 두 채널에 모두 있으면 본문 요약이 있는 네이버 쪽을 남깁니다.
+- 기사 저작권은 각 언론사에 있습니다. 사내 모니터링 용도로만 사용하세요.
